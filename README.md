@@ -55,6 +55,8 @@ Spreads are always shown for the **home team**, using sportsbook signs: `-9.5` m
 | `--odds-file odds.json` | Reuse saved odds instead of calling the API, which saves your API quota |
 | `--out predictions.csv` | Also write the full table to a CSV file |
 
+Run it before kickoff, for example on Saturday or Sunday morning. Games that have already started are skipped, because their lines are live in-game odds.
+
 ## How the model works (`ratings.py`)
 
 Each team gets an **offense** rating (points scored above average) and a **defense** rating (points allowed above average, so lower is better). Every completed game from this season and last season is modeled as:

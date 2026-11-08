@@ -99,7 +99,7 @@ def main():
         print("  None this week.")
     missing = df["book_spread"].isna().sum()
     if missing:
-        print(f"\n({missing} game(s) had no sportsbook line — already started or not posted yet.)")
+        print(f"\n({missing} game(s) had no sportsbook line — game already started, or line not posted yet.)")
 
     if args.out:
         df.to_csv(args.out, index=False)

@@ -2,7 +2,7 @@
 
 import json
 import statistics
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pandas as pd
 import requests
@@ -66,8 +66,13 @@ def parse_odds(events, bookmaker=None):
     favored by 3.5. When several books are available, the median line is used
     unless a specific `bookmaker` key (e.g. "draftkings") is requested.
     """
+    now = datetime.now(timezone.utc)
     rows = []
     for ev in events:
+        # Skip games already in progress: their lines are live in-game odds.
+        start = ev.get("commence_time")
+        if start and datetime.fromisoformat(start.replace("Z", "+00:00")) <= now:
+            continue
         home = ODDS_API_TO_NFLVERSE.get(ev["home_team"])
         away = ODDS_API_TO_NFLVERSE.get(ev["away_team"])
         if home is None or away is None:
