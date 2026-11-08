@@ -39,8 +39,8 @@ def fetch_odds(api_key, regions="us"):
     """Download current NFL spreads and totals (raw JSON list of events)."""
     resp = requests.get(
         ODDS_API_URL,
+        headers={"x-api-key": api_key},  # header keeps the key out of URLs/logs
         params={
-            "apiKey": api_key,
             "regions": regions,
             "markets": "spreads,totals",
             "oddsFormat": "american",
