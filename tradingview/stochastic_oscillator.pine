@@ -1,0 +1,69 @@
+//@version=6
+// Stochastic Oscillator
+// %K = 100 * (close - lowest low) / (highest high - lowest low) over `kLength` bars,
+// smoothed by `kSmoothing`; %D is a moving average of %K over `dSmoothing` bars.
+indicator("Stochastic Oscillator", shorttitle = "Stoch", overlay = false, precision = 2, timeframe = "", timeframe_gaps = true)
+
+// ── Inputs ────────────────────────────────────────────────────────────────
+grpCalc = "Calculation"
+kLength    = input.int(14, "%K Length",    minval = 1, group = grpCalc)
+kSmoothing = input.int(3,  "%K Smoothing", minval = 1, group = grpCalc, tooltip = "1 = Fast Stochastic, 3 = Slow Stochastic")
+dSmoothing = input.int(3,  "%D Smoothing", minval = 1, group = grpCalc)
+maType     = input.string("SMA", "Smoothing MA Type", options = ["SMA", "EMA", "WMA", "RMA"], group = grpCalc)
+src        = input.source(close, "Source", group = grpCalc)
+
+grpLevels = "Levels"
+obLevel  = input.float(80.0, "Overbought", minval = 0, maxval = 100, group = grpLevels)
+midLevel = input.float(50.0, "Middle",     minval = 0, maxval = 100, group = grpLevels)
+osLevel  = input.float(20.0, "Oversold",   minval = 0, maxval = 100, group = grpLevels)
+
+grpStyle = "Style"
+kColor       = input.color(#2962FF, "%K", group = grpStyle)
+dColor       = input.color(#FF6D00, "%D", group = grpStyle)
+showZoneFill = input.bool(true, "Highlight overbought / oversold zones", group = grpStyle)
+showSignals  = input.bool(true, "Show %K/%D crossover markers", group = grpStyle)
+zoneOnly     = input.bool(true, "Only mark crosses inside OB/OS zones", group = grpStyle)
+
+// ── Calculation ───────────────────────────────────────────────────────────
+smooth(series float x, simple int len) =>
+    switch maType
+        "EMA" => ta.ema(x, len)
+        "WMA" => ta.wma(x, len)
+        "RMA" => ta.rma(x, len)
+        => ta.sma(x, len)
+
+rawK = ta.stoch(src, high, low, kLength)
+k = smooth(rawK, kSmoothing)
+d = smooth(k, dSmoothing)
+
+// ── Signals ───────────────────────────────────────────────────────────────
+bullCross = ta.crossover(k, d)
+bearCross = ta.crossunder(k, d)
+bullSignal = bullCross and (not zoneOnly or math.min(k, d) <= osLevel)
+bearSignal = bearCross and (not zoneOnly or math.max(k, d) >= obLevel)
+
+// ── Plots ─────────────────────────────────────────────────────────────────
+pK = plot(k, "%K", color = kColor, linewidth = 2)
+pD = plot(d, "%D", color = dColor)
+
+hOB  = hline(obLevel,  "Overbought", color = color.new(color.red, 30),   linestyle = hline.style_dashed)
+hMid = hline(midLevel, "Middle",     color = color.new(color.gray, 50),  linestyle = hline.style_dotted)
+hOS  = hline(osLevel,  "Oversold",   color = color.new(color.green, 30), linestyle = hline.style_dashed)
+fill(hOB, hOS, color = color.new(#7E57C2, 92), title = "Background")
+
+// Shade the area between %K and the level line while %K is beyond it.
+pOB = plot(obLevel, "OB ref", display = display.none, editable = false)
+pOS = plot(osLevel, "OS ref", display = display.none, editable = false)
+fill(pK, pOB, color = showZoneFill and k > obLevel ? color.new(color.red, 70)   : na, title = "Overbought Fill")
+fill(pK, pOS, color = showZoneFill and k < osLevel ? color.new(color.green, 70) : na, title = "Oversold Fill")
+
+plotshape(showSignals and bullSignal ? d : na, "Bullish Cross", shape.circle, location.absolute, color.green, size = size.tiny)
+plotshape(showSignals and bearSignal ? d : na, "Bearish Cross", shape.circle, location.absolute, color.red,   size = size.tiny)
+
+// ── Alerts ────────────────────────────────────────────────────────────────
+alertcondition(bullSignal, "Stoch Bullish Cross", "Stochastic: %K crossed above %D on {{ticker}} ({{interval}})")
+alertcondition(bearSignal, "Stoch Bearish Cross", "Stochastic: %K crossed below %D on {{ticker}} ({{interval}})")
+alertcondition(ta.crossover(k, obLevel),  "Stoch Enters Overbought", "Stochastic %K entered overbought on {{ticker}}")
+alertcondition(ta.crossunder(k, osLevel), "Stoch Enters Oversold",   "Stochastic %K entered oversold on {{ticker}}")
+alertcondition(ta.crossunder(k, obLevel), "Stoch Exits Overbought",  "Stochastic %K left overbought on {{ticker}}")
+alertcondition(ta.crossover(k, osLevel),  "Stoch Exits Oversold",    "Stochastic %K left oversold on {{ticker}}")
